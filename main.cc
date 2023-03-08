@@ -102,15 +102,15 @@ int main(int argc, char *argv[]) {
     const auto rel_output = results_stem + "_rel_diff" + comparison.extension().string();
     const auto pixel_detail_stats_fn = results_stem + "_pixel_diffs.txt";
 
-    auto ds_out = GetGDALDriverManager()->GetDriverByName("gtiff")->Create(colored_output.c_str(), w, h, 3, GDT_Byte,
-                                                                           nullptr);
+    char** ds_out_options = NULL;
+    ds_out_options = CSLSetNameValue(ds_out_options, "Alpha", "YES");
+    auto ds_out = GetGDALDriverManager()->GetDriverByName("gtiff")->Create(colored_output.c_str(), w, h, 4, GDT_Byte,
+                                                                           ds_out_options);
+    ds_out->GetRasterBand(4)->SetNoDataValue(0);
     ds_out->SetProjection(comparison_ds->GetProjectionRef());
     double gt[6];
     check_gdal_result(comparison_ds->GetGeoTransform(gt));
     check_gdal_result(ds_out->SetGeoTransform(gt));
-    for (auto i = 1; i <= ds_out->GetRasterCount(); i++) {
-        ds_out->GetRasterBand(i)->SetNoDataValue(0);
-    }
     auto ds_out2 = GetGDALDriverManager()->GetDriverByName("gtiff")->Create(rel_output.c_str(), w, h, 1, GDT_Float32,
                                                                             nullptr);
     ds_out2->SetProjection(comparison_ds->GetProjectionRef());
@@ -134,6 +134,7 @@ int main(int argc, char *argv[]) {
     std::vector<uint8_t> r_vec(w * h);
     std::vector<uint8_t> g_vec(w * h);
     std::vector<uint8_t> b_vec(w * h);
+    std::vector<uint8_t> a_vec(w * h, 0);
 
     std::vector<float> rel_diff_vec(w * h);
 
@@ -186,6 +187,7 @@ int main(int argc, char *argv[]) {
                 } else {
                     b_vec[i] = 255;
                 }
+                a_vec[i] = 255;
             }
         }
     }
@@ -233,6 +235,7 @@ int main(int argc, char *argv[]) {
     ds_out->GetRasterBand(1)->RasterIO(GF_Write, 0, 0, w, h, r_vec.data(), w, h, GDT_Byte, 0, 0);
     ds_out->GetRasterBand(2)->RasterIO(GF_Write, 0, 0, w, h, g_vec.data(), w, h, GDT_Byte, 0, 0);
     ds_out->GetRasterBand(3)->RasterIO(GF_Write, 0, 0, w, h, b_vec.data(), w, h, GDT_Byte, 0, 0);
+    ds_out->GetRasterBand(4)->RasterIO(GF_Write, 0, 0, w, h, a_vec.data(), w, h, GDT_Byte, 0, 0);
 
 
     std::vector<std::vector<uint8_t>> tmps =
