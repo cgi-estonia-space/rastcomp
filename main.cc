@@ -58,7 +58,7 @@ struct PixelData {
 int main(int argc, char *argv[]) {
 
     if (argc != 4) {
-        printf("3 arguments required <golden> <comparison> <output folder>");
+        printf("3 arguments required <golden> <comparison> <output folder>\n");
         return 1;
     }
 
@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
     auto comparison_ds = (GDALDataset *) GDALOpen(comparison.c_str(), GA_ReadOnly);
 
     if (!golden_ds || !comparison_ds) {
-        std::cerr << "Could not open both of the input files, please check the arguments" << std::endl;
+        std::cerr << "Could not open both of the input files, please check the arguments\n" << std::endl;
         exit(1);
     }
 
@@ -108,6 +108,9 @@ int main(int argc, char *argv[]) {
     double gt[6];
     check_gdal_result(comparison_ds->GetGeoTransform(gt));
     check_gdal_result(ds_out->SetGeoTransform(gt));
+    for (auto i = 1; i <= ds_out->GetRasterCount(); i++) {
+        ds_out->GetRasterBand(i)->SetNoDataValue(0);
+    }
     auto ds_out2 = GetGDALDriverManager()->GetDriverByName("gtiff")->Create(rel_output.c_str(), w, h, 1, GDT_Float32,
                                                                             nullptr);
     ds_out2->SetProjection(comparison_ds->GetProjectionRef());
@@ -225,14 +228,6 @@ int main(int argc, char *argv[]) {
     diff_vec.shrink_to_fit();
 
     printf("writing file: %s\n", colored_output.c_str());
-
-    //ds_out->GetRasterBand(1)->SetNoDataValue(0);
-    //ds_out->GetRasterBand(2)->SetNoDataValue(0);
-    //ds_out->GetRasterBand(3)->SetNoDataValue(0);
-
-    ds_out->GetRasterBand(1)->DeleteNoDataValue();
-    ds_out->GetRasterBand(2)->DeleteNoDataValue();
-    ds_out->GetRasterBand(3)->DeleteNoDataValue();
 
 
     ds_out->GetRasterBand(1)->RasterIO(GF_Write, 0, 0, w, h, r_vec.data(), w, h, GDT_Byte, 0, 0);
