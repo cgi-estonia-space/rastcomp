@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <chrono>
+#include <cstdio>
 #include <filesystem>
 #include <iostream>
 #include <vector>
@@ -7,6 +8,10 @@
 #include <unistd.h>
 
 #include <gdal/gdal_priv.h>
+
+namespace {
+
+FILE* pixel_detail_stats_stream{};
 
 void print_gdal_cache() {
     double max = GDALGetCacheMax64();
@@ -30,28 +35,30 @@ struct PixelData {
     float rel_diff;
 
     void print() {
-        printf("(%6d , %5d) pixel: [%.20f - %.20f] diff: %.20f ",
+        fprintf(pixel_detail_stats_stream, "(%6d , %5d) pixel: [%.20f - %.20f] diff: %.20f ",
                x, y, pixel_1, pixel_2, diff);
 
         if (abs(rel_diff) > 0.001) {
-            printf(" - %.6f%%\n", rel_diff * 100);
+            fprintf(pixel_detail_stats_stream, " - %.6f%%\n", rel_diff * 100);
         } else {
-            printf(" - %.6f ppm\n", rel_diff * 1e6);
+            fprintf(pixel_detail_stats_stream, " - %.6f ppm\n", rel_diff * 1e6);
         }
 
         uint32_t p1;
         uint32_t p2;
         memcpy(&p1, &pixel_1, 4);
         memcpy(&p2, &pixel_2, 4);
-        printf("%08X %08X\n", p1, p2);
+        fprintf(pixel_detail_stats_stream, "%08X %08X\n", p1, p2);
     }
 };
+
+}
 
 
 int main(int argc, char *argv[]) {
 
-    if (argc < 3) {
-        printf("2 arguments required <golden> <comparison> <output folder>");
+    if (argc != 4) {
+        printf("3 arguments required <golden> <comparison> <output folder>");
         return 1;
     }
 
@@ -93,6 +100,7 @@ int main(int argc, char *argv[]) {
             output_dir.string() + std::filesystem::path::preferred_separator + comparison.stem().string();
     const auto colored_output = results_stem + "_clr_diff" + comparison.extension().string();
     const auto rel_output = results_stem + "_rel_diff" + comparison.extension().string();
+    const auto pixel_detail_stats_fn = results_stem + "_pixel_diffs.txt";
 
     auto ds_out = GetGDALDriverManager()->GetDriverByName("gtiff")->Create(colored_output.c_str(), w, h, 3, GDT_Byte,
                                                                            nullptr);
@@ -125,6 +133,12 @@ int main(int argc, char *argv[]) {
     std::vector<uint8_t> b_vec(w * h);
 
     std::vector<float> rel_diff_vec(w * h);
+
+    pixel_detail_stats_stream = fopen(pixel_detail_stats_fn.c_str(), "w");
+    if (pixel_detail_stats_stream == nullptr) {
+        std::cerr << "Could not open detailed pixel difference stream." << std::endl;
+        exit(1);
+    }
 
     size_t bad_pixels = 0;
     for (int i = 0; i < diff_vec.size(); i++) {
@@ -272,6 +286,7 @@ int main(int argc, char *argv[]) {
     print_gdal_cache();
     GDALClose(ds_out);
     GDALClose(ds_out2);
+    fclose(pixel_detail_stats_stream);
     print_gdal_cache();
 
 }
