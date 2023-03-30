@@ -165,6 +165,7 @@ int main(int argc, char *argv[]) {
             d.print();
 
             r_vec[i] = 255;
+            a_vec[i] = 255;
         } else {
             d.rel_diff = d.diff / data2[i];
             rel_diff_vec[i] = d.rel_diff * 1e6;
