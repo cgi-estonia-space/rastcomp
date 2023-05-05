@@ -11,7 +11,7 @@
 
 namespace {
 
-FILE* pixel_detail_stats_stream{};
+FILE* pixel_detail_stats_stream{nullptr};
 
 void print_gdal_cache() {
     double max = GDALGetCacheMax64();
@@ -35,6 +35,9 @@ struct PixelData {
     float rel_diff;
 
     void print() {
+        if (pixel_detail_stats_stream == nullptr) {
+            return;
+        }
         fprintf(pixel_detail_stats_stream, "(%6d , %5d) pixel: [%.20f - %.20f] diff: %.20f ",
                x, y, pixel_1, pixel_2, diff);
 
@@ -57,8 +60,8 @@ struct PixelData {
 
 int main(int argc, char *argv[]) {
 
-    if (argc != 4) {
-        printf("3 arguments required <golden> <comparison> <output folder>\n");
+    if (argc != 4 && argc != 5) {
+        printf("3 arguments required [golden] [comparison] [output folder] <optional - print pixel debug - 'pix'>\n");
         return 1;
     }
 
@@ -138,10 +141,14 @@ int main(int argc, char *argv[]) {
 
     std::vector<float> rel_diff_vec(w * h);
 
-    pixel_detail_stats_stream = fopen(pixel_detail_stats_fn.c_str(), "w");
-    if (pixel_detail_stats_stream == nullptr) {
-        std::cerr << "Could not open detailed pixel difference stream." << std::endl;
-        exit(1);
+    if (argc == 4 && strcmp(argv[4], "pix") == 0) {
+        pixel_detail_stats_stream = fopen(pixel_detail_stats_fn.c_str(), "w");
+        if (pixel_detail_stats_stream == nullptr) {
+            std::cerr << "Could not open detailed pixel difference stream." << std::endl;
+            exit(1);
+        }
+    } else {
+        std::cout << "Detailed pixel level difference log will not be generated." << std::endl;
     }
 
     size_t bad_pixels = 0;
@@ -285,7 +292,9 @@ int main(int argc, char *argv[]) {
     print_gdal_cache();
     GDALClose(ds_out);
     GDALClose(ds_out2);
-    fclose(pixel_detail_stats_stream);
+    if (pixel_detail_stats_stream != nullptr) {
+        fclose(pixel_detail_stats_stream);
+    }
     print_gdal_cache();
 
 }
