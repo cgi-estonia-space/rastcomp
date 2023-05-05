@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
 
     std::vector<float> rel_diff_vec(w * h);
 
-    if (argc == 4 && strcmp(argv[4], "pix") == 0) {
+    if (argc == 5 && strcmp(argv[4], "pix") == 0) {
         pixel_detail_stats_stream = fopen(pixel_detail_stats_fn.c_str(), "w");
         if (pixel_detail_stats_stream == nullptr) {
             std::cerr << "Could not open detailed pixel difference stream." << std::endl;
@@ -232,6 +232,7 @@ int main(int argc, char *argv[]) {
         printf("median = %f ppm\n", diff_vec[cnt / 2].rel_diff * 1e6);
     } else {
         printf("cnt = %zu\n", cnt);
+        printf("No differences detected\n");
     }
 
     diff_vec.clear();
