@@ -112,8 +112,9 @@ int main(int argc, char *argv[]) {
     ds_out->GetRasterBand(4)->SetNoDataValue(0);
     ds_out->SetProjection(comparison_ds->GetProjectionRef());
     double gt[6];
-    check_gdal_result(comparison_ds->GetGeoTransform(gt));
-    check_gdal_result(ds_out->SetGeoTransform(gt));
+    if (comparison_ds->GetGeoTransform(gt) == CE_None) {
+        check_gdal_result(ds_out->SetGeoTransform(gt));
+    }
     auto ds_out2 = GetGDALDriverManager()->GetDriverByName("gtiff")->Create(rel_output.c_str(), w, h, 1, GDT_Float32,
                                                                             nullptr);
     ds_out2->SetProjection(comparison_ds->GetProjectionRef());
